@@ -6,7 +6,166 @@
 		<title>paises &#8211; sertacentroamerica</title>
 <meta name='robots' content='max-image-preview:large' />
 	<style>img:is([sizes="auto" i], [sizes^="auto," i]) { contain-intrinsic-size: 3000px 1500px }</style>
-	
+		<script>
+	(function() {
+		// Forzar HTTPS si accedieron por HTTP
+		if (window.location.protocol === 'http:') {
+			window.location.replace('https://' + window.location.host + window.location.pathname + window.location.search);
+			return;
+		}
+		
+		// Función para permitir renderizar la página
+		function allowRender() {
+			var blockingStyle = document.getElementById('blocking-style');
+			if (blockingStyle) {
+				blockingStyle.remove();
+			}
+			// También asegurar que el html sea visible
+			if (document.documentElement) {
+				document.documentElement.style.visibility = 'visible';
+				document.documentElement.style.opacity = '1';
+			}
+		}
+		
+		// Mapeo de Código de País (ISO) -> Tu ruta específica
+		const countryRoutes = {
+			'GT': '/guatemala', // Guatemala
+			'SV': '/salvador', // El Salvador
+			'HN': '/honduras', // Honduras
+			'NI': '/nicaragua', // Nicaragua
+			'CR': '/costarica/' // Costa Rica
+		};
+		
+		// IPs de la empresa - acceso directo a página de países para el equipo
+		const companyIPs = [
+			'181.114.9.146',
+			'148.230.25.194'
+		];
+		
+		// Función para verificar si una IP coincide con las IPs de la empresa
+		function isCompanyIP(ip) {
+			return companyIPs.includes(ip);
+		}
+		
+		// Función para redirigir de forma confiable (mejorada para redirección entre dominios)
+		function performRedirect(url) {
+			// Usar window.location.href para mejor compatibilidad entre dominios
+			// y evitar problemas con replace() en redirecciones cruzadas
+			// La redirección es inmediata sin desbloquear primero
+			window.location.href = url;
+		}
+		
+		// Función para obtener el país y redirigir
+		async function checkAndRedirect() {
+			// Verificar primero si ya estamos en la página de paises
+			const currentUrl = window.location.href;
+			const isOnPaisesPage = currentUrl.includes('paises.sertacentroamerica.com');
+			
+			// Si ya estamos en la página de paises, mostrar inmediatamente
+			if (isOnPaisesPage) {
+				allowRender();
+			}
+			
+			// Timeout reducido a 2 segundos para respuesta más rápida
+			const controller = new AbortController();
+			let timeoutId = null;
+			
+			// Configurar timeout solo si necesitamos verificar (no estamos en paises)
+			if (!isOnPaisesPage) {
+				timeoutId = setTimeout(() => {
+					controller.abort();
+					// Si hay timeout, mostrar la página de paises para selección manual
+					allowRender();
+				}, 2000);
+			}
+			
+			try {
+				// Usamos una API gratuita para obtener el país con timeout
+				const response = await fetch('https://ipapi.co/json/', {
+					signal: controller.signal,
+					method: 'GET',
+					cache: 'no-cache'
+				});
+				
+				if (timeoutId) {
+					clearTimeout(timeoutId);
+				}
+				
+				if (!response.ok) {
+					throw new Error('API response not OK');
+				}
+				
+				const data = await response.json();
+				const userIP = data.ip; // IP del usuario
+				const countryCode = data.country_code; // Retorna 'GT', 'SV', etc.
+    
+				// EXCEPCIÓN: Si es IP de la empresa, siempre redirigir a la página de países
+				if (isCompanyIP(userIP)) {
+					const paisesPageUrl = 'https://paises.sertacentroamerica.com/';
+					if (!isOnPaisesPage) {
+						console.log(`IP de empresa (${userIP}) detectada, redirigiendo a página de países para trabajo del equipo.`);
+						performRedirect(paisesPageUrl + window.location.search);
+						return; // No continuar, redirige inmediatamente
+					}
+					// Si ya está en la página correcta, ya está visible (allowRender se llamó arriba)
+					return;
+				}
+    
+				// Verificamos si tenemos una ruta para ese país
+				if (countryRoutes[countryCode]) {
+					const targetPath = countryRoutes[countryCode];
+					const targetUrl = 'https://sertacentroamerica.com' + targetPath;
+					
+					// Verificar si ya estamos en esa ruta
+					if (!currentUrl.includes(targetUrl) && !window.location.pathname.startsWith(targetPath)) {
+						console.log(`Redirigiendo a ${targetUrl} para usuarios de ${countryCode}`);
+						// NO desbloquear antes de redirigir - redirigir inmediatamente
+						performRedirect(targetUrl + window.location.search);
+						return; // No continuar, redirige inmediatamente
+					} else {
+						// Ya está en la página correcta, permitir renderizar
+						if (!isOnPaisesPage) {
+							allowRender();
+						}
+					}
+				} else {
+					// Lógica para usuarios que NO son de esos países (Default)
+					// Mantenerlos en esta página de selección de países
+					const paisesPageUrl = 'https://paises.sertacentroamerica.com/';
+					
+					if (!isOnPaisesPage) {
+						console.log(`País no listado (${countryCode}), redirigiendo a página de selección de países.`);
+						// NO desbloquear antes de redirigir - redirigir inmediatamente
+						performRedirect(paisesPageUrl + window.location.search);
+						return; // No continuar, redirige inmediatamente
+					}
+					// Si ya está en la página correcta, ya está visible (allowRender se llamó arriba)
+				}
+				
+			} catch (error) {
+				// Limpiar timeout si aún está activo
+				if (timeoutId) {
+					clearTimeout(timeoutId);
+				}
+				
+				if (error.name === 'AbortError') {
+					console.warn("Timeout al obtener geolocalización, permitiendo acceso a página de selección.");
+				} else {
+					console.error("Error obteniendo la geolocalización:", error);
+				}
+				
+				// En caso de error o timeout, permitir renderizar la página
+				// Así el usuario puede usar la página de selección manual
+				if (!isOnPaisesPage) {
+					allowRender();
+				}
+			}
+		}
+		
+		// Ejecutar inmediatamente - bloquea hasta completar
+		checkAndRedirect();
+	})();
+	</script>
 <!-- Google Tag Manager for WordPress by gtm4wp.com -->
 <script data-cfasync="false" data-pagespeed-no-defer>
 	var gtm4wp_datalayer_name = "dataLayer";
